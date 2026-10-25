@@ -1,0 +1,8 @@
+{
+  "name": "Remix Urban Green Intelligence",
+  "description": "AI destekli şehir planlama aracı; veri odaklı senaryolarla yeşil alanları optimize ederek kentsel yaşam kalitesini artırır.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
