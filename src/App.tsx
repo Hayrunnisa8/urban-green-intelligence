@@ -43,9 +43,11 @@ export default function App() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId>('new_pocket_parks');
   const [activeGridCoord, setActiveGridCoord] = useState<{ x: number; y: number } | null>({ x: 1, y: 1 });
 
-  // AI Analiz Durumu ve API Durumu
+  // AI Analiz Durumu ve API Durumu (Başlangıç analizini senkron olarak hazırla; mount yarışını önler)
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(() =>
+    generateRuleBasedAIAnalysis(DISTRICT_PRESETS[0].indicators, 'new_pocket_parks')
+  );
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
   const [showMethodologyInfo, setShowMethodologyInfo] = useState<boolean>(false);
@@ -366,12 +368,6 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
     setTimeout(() => setCopiedNotification(false), 3000);
   };
 
-  // İlk yüklemede başlangıç analizini hazırla
-  useEffect(() => {
-    const initialFallback = generateRuleBasedAIAnalysis(indicators, selectedScenarioId);
-    setAiAnalysis(initialFallback);
-  }, []);
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased pb-20">
       {/* ÜST BİLGİ VE BAŞLIK ÇUBUĞU */}
@@ -585,7 +581,9 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                   {realDataSources.no2Level && (
                     <div className="text-[11px] text-slate-600">
                       <span className="font-semibold text-emerald-800">Panelde Aktif Gerçek Ölçüm:</span>{' '}
-                      {realDataSources.no2Level.station} · {realDataSources.no2Level.date} ({realDataSources.no2Level.value} {realDataSources.no2Level.unit})
+                      <span>
+                        {realDataSources.no2Level.station} · {realDataSources.no2Level.date} ({realDataSources.no2Level.value} {realDataSources.no2Level.unit})
+                      </span>
                       {(realDataSources.no2Level.station !== selectedAirStation ||
                         realDataSources.no2Level.date !== selectedAirDate) && (
                         <span className="ml-1.5 text-amber-800 font-medium">
@@ -1147,7 +1145,9 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                               {isCurrentlyApplied && (
                                 <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-semibold">
                                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                  Bu kayıt ({realDataSources.no2Level!.station} · {realDataSources.no2Level!.date} · {realDataSources.no2Level!.value} {realDataSources.no2Level!.unit}) gösterge paneline uygulandı.
+                                  <span>
+                                    Bu kayıt ({realDataSources.no2Level!.station} · {realDataSources.no2Level!.date} · {realDataSources.no2Level!.value} {realDataSources.no2Level!.unit}) gösterge paneline uygulandı.
+                                  </span>
                                 </div>
                               )}
 
@@ -1169,10 +1169,12 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                                     : 'bg-slate-200 text-slate-500 cursor-not-allowed'
                                 }`}
                               >
-                                Gerçek NO₂ değerini uygula
-                                {isValidMeasurement && convertedSelectedNo2 !== null
-                                  ? ` (${convertedSelectedNo2} µg/m³)`
-                                  : ' (Ölçüm Yok)'}
+                                <span>
+                                  Gerçek NO₂ değerini uygula
+                                  {isValidMeasurement && convertedSelectedNo2 !== null
+                                    ? ` (${convertedSelectedNo2} µg/m³)`
+                                    : ' (Ölçüm Yok)'}
+                                </span>
                               </button>
                             </div>
                           );
@@ -1189,7 +1191,9 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                     {realDataSources.no2Level && (
                       <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-emerald-800 bg-emerald-100 border border-emerald-200 rounded-full px-2.5 py-0.5 w-fit">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        📍 Uygulanan Gerçek Ölçüm: {realDataSources.no2Level.station} · {realDataSources.no2Level.date} ({realDataSources.no2Level.value} {realDataSources.no2Level.unit})
+                        <span>
+                          📍 Uygulanan Gerçek Ölçüm: {realDataSources.no2Level.station} · {realDataSources.no2Level.date} ({realDataSources.no2Level.value} {realDataSources.no2Level.unit})
+                        </span>
                       </div>
                     )}
                     <input
@@ -1347,7 +1351,7 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                     </div>
                     <ul className="space-y-1 text-slate-700">
                       {currentScenario.advantages.map((adv, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
+                        <li key={`${currentScenario.id}-adv-${idx}`} className="flex items-start gap-1.5">
                           <span className="text-emerald-600 font-bold">•</span>
                           <span>{adv}</span>
                         </li>
@@ -1362,7 +1366,7 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                     </div>
                     <ul className="space-y-1 text-slate-700">
                       {currentScenario.limitations.map((lim, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
+                        <li key={`${currentScenario.id}-lim-${idx}`} className="flex items-start gap-1.5">
                           <span className="text-amber-600 font-bold">•</span>
                           <span>{lim}</span>
                         </li>
@@ -1429,15 +1433,15 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                 className="w-full py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {isAnalyzing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Kentsel Veriler Yapay Zekâ ile Yorumlanıyor...
-                  </>
+                  <span key="analyzing" className="inline-flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                    <span>Kentsel Veriler Yapay Zekâ ile Yorumlanıyor...</span>
+                  </span>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Bölge Verileri & Seçili Senaryo İçin AI Analizini Çalıştır
-                  </>
+                  <span key="idle" className="inline-flex items-center justify-center gap-2">
+                    <Sparkles className="w-4 h-4 shrink-0" />
+                    <span>Bölge Verileri & Seçili Senaryo İçin AI Analizini Çalıştır</span>
+                  </span>
                 )}
               </button>
 
@@ -1457,11 +1461,13 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                           aiAnalysis.engineUsed === 'gemini' ? 'bg-emerald-500' : 'bg-amber-500'
                         }`}
                       ></span>
-                      {aiAnalysis.engineUsed === 'rule_based_fallback' &&
-                      hasServerApiKey &&
-                      !fallbackNotice
-                        ? 'Kural Tabanlı Ön Analiz (Gemini API Anahtarı Aktif — Canlı Analiz Hazır)'
-                        : aiAnalysis.engineLabel}
+                      <span>
+                        {aiAnalysis.engineUsed === 'rule_based_fallback' &&
+                        hasServerApiKey &&
+                        !fallbackNotice
+                          ? 'Kural Tabanlı Ön Analiz (Gemini API Anahtarı Aktif — Canlı Analiz Hazır)'
+                          : aiAnalysis.engineLabel}
+                      </span>
                     </span>
                     <span className="text-[10px] text-slate-600 font-mono">
                       {aiAnalysis.generatedAt}
@@ -1491,17 +1497,23 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                     </div>
                     <div>
                       <span className="font-semibold text-emerald-800">• Gerçek İstasyon Verisi:</span>{' '}
-                      {realDataSources.no2Level
-                        ? `Konya ${realDataSources.no2Level.station} İstasyonu (${realDataSources.no2Level.date}) · ${realDataSources.no2Level.value} ${realDataSources.no2Level.unit} NO₂ — yalnızca bu ölçüm noktasını temsil eder; tüm mahallelerin hava kalitesi için kesin sonuç olarak genellenemez.`
-                        : 'Aktif gerçek istasyon ölçümü uygulanmadı (NO₂ değeri kullanıcı girdisidir).'}
+                      <span>
+                        {realDataSources.no2Level
+                          ? `Konya ${realDataSources.no2Level.station} İstasyonu (${realDataSources.no2Level.date}) · ${realDataSources.no2Level.value} ${realDataSources.no2Level.unit} NO₂ — yalnızca bu ölçüm noktasını temsil eder; tüm mahallelerin hava kalitesi için kesin sonuç olarak genellenemez.`
+                          : 'Aktif gerçek istasyon ölçümü uygulanmadı (NO₂ değeri kullanıcı girdisidir).'}
+                      </span>
                     </div>
                     <div>
                       <span className="font-semibold text-slate-800">• Kullanıcı Girdisi / Demo Varsayımı:</span>{' '}
-                      Sıcaklık ({indicators.temperature}°C), Trafik Yoğunluğu (%{indicators.trafficDensity}), Yapılaşma Oranı (%{indicators.builtUpDensity}) ve Yeşil Alan Oranı (%{indicators.greenSpaceRatio}) gerçek veri kaynağından gelmeyen kullanıcı/senaryo girdileridir.
+                      <span>
+                        Sıcaklık ({indicators.temperature}°C), Trafik Yoğunluğu (%{indicators.trafficDensity}), Yapılaşma Oranı (%{indicators.builtUpDensity}) ve Yeşil Alan Oranı (%{indicators.greenSpaceRatio}) gerçek veri kaynağından gelmeyen kullanıcı/senaryo girdileridir.
+                      </span>
                     </div>
                     <div>
                       <span className="font-semibold text-amber-900">• Varsayımsal Model Çıktısı ve Hipotezler:</span>{' '}
-                      Stres skoru ({stress.stressScore}/100) ve senaryo azaltım katsayıları (-{currentScenario.tempReductionDemo}°C ısı, -%{currentScenario.no2ReductionDemo} NO₂, +%{currentScenario.greenIncreaseDemo} yeşil alan) varsayımsal model çıktılarıdır; rüzgâr ve bina geometrisi verileri olmadan kentsel kanyon etkisi ve kirletici dağılımı iyileşmesi ileri analiz gerektiren hipotezlerdir.
+                      <span>
+                        Stres skoru ({stress.stressScore}/100) ve senaryo azaltım katsayıları (-{currentScenario.tempReductionDemo}°C ısı, -%{currentScenario.no2ReductionDemo} NO₂, +%{currentScenario.greenIncreaseDemo} yeşil alan) varsayımsal model çıktılarıdır; rüzgâr ve bina geometrisi verileri olmadan kentsel kanyon etkisi ve kirletici dağılımı iyileşmesi ileri analiz gerektiren hipotezlerdir.
+                      </span>
                     </div>
                   </div>
 
@@ -1601,7 +1613,7 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                     </h4>
                     <ul className="space-y-1 text-amber-900 text-[11px]">
                       {aiAnalysis.uncertaintiesAndDataGaps.map((gap, i) => (
-                        <li key={i} className="flex items-start gap-1.5">
+                        <li key={`${aiAnalysis.engineUsed}-${i}-${gap.slice(0, 24)}`} className="flex items-start gap-1.5">
                           <span className="text-amber-600 font-bold">•</span>
                           <span>{gap}</span>
                         </li>
@@ -1615,15 +1627,15 @@ ${aiAnalysis.uncertaintiesAndDataGaps.map((item) => `- ${item}`).join('\n')}
                     className="w-full py-2 px-3 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {copiedNotification ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        Karar Raporu Panoya Kopyalandı!
-                      </>
+                      <span key="copied" className="inline-flex items-center justify-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Karar Raporu Panoya Kopyalandı!</span>
+                      </span>
                     ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 text-slate-500" />
-                        AI Karar Destek Raporunu Kopyala
-                      </>
+                      <span key="copy" className="inline-flex items-center justify-center gap-1.5">
+                        <Copy className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                        <span>AI Karar Destek Raporunu Kopyala</span>
+                      </span>
                     )}
                   </button>
                 </div>
